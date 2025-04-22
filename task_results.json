@@ -1,0 +1,83 @@
+[
+    {
+        "id": "1",
+        "description": "安装所需依赖库，如 requests 和 beautifulsoup4",
+        "status": "success",
+        "output": "任务 1 执行成功",
+        "timestamp": "2025-04-22T20:19:02.686640",
+        "dependencyResults": {}
+    },
+    {
+        "id": "2",
+        "description": "模拟浏览器请求，获取用户主页HTML",
+        "status": "success",
+        "output": "任务 2 执行成功",
+        "timestamp": "2025-04-22T20:19:02.686711",
+        "dependencyResults": {
+            "1": {
+                "status": "success",
+                "output": "任务 1 执行成功"
+            }
+        }
+    },
+    {
+        "id": "3",
+        "description": "从HTML中提取笔记标题、发布时间和点赞数",
+        "status": "success",
+        "output": "任务 3 执行成功",
+        "timestamp": "2025-04-22T20:19:02.686952",
+        "dependencyResults": {
+            "2": {
+                "status": "success",
+                "output": "任务 2 执行成功"
+            }
+        }
+    },
+    {
+        "id": "4",
+        "description": "清洗数据，去掉无效数据行",
+        "status": "success",
+        "output": "任务 4 执行成功",
+        "timestamp": "2025-04-22T20:19:02.687003",
+        "dependencyResults": {
+            "3": {
+                "status": "success",
+                "output": "任务 3 执行成功"
+            },
+            "2": {
+                "status": "success",
+                "output": "任务 2 执行成功"
+            }
+        }
+    },
+    {
+        "id": "5",
+        "description": "存储清洗后的数据到数据库",
+        "status": "success",
+        "output": "任务 5 执行成功",
+        "timestamp": "2025-04-22T20:19:02.687079",
+        "dependencyResults": {
+            "4": {
+                "status": "success",
+                "output": "任务 4 执行成功"
+            }
+        }
+    },
+    {
+        "id": "6",
+        "description": "生成任务执行报告，包含成功与失败的详细信息",
+        "status": "success",
+        "output": "任务 6 执行成功",
+        "timestamp": "2025-04-22T20:19:02.687218",
+        "dependencyResults": {
+            "5": {
+                "status": "success",
+                "output": "任务 5 执行成功"
+            },
+            "4": {
+                "status": "success",
+                "output": "任务 4 执行成功"
+            }
+        }
+    }
+]

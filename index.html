@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任务执行结果可视化</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- 替换React Flow为D3和Dagre-D3 -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/dagre-d3@0.6.4/dist/dagre-d3.min.js"></script>
+    
+    <style>
+        .node rect {
+            stroke: #333;
+            stroke-width: 1.5px;
+            fill: #fff;
+        }
+        
+        .node.success rect {
+            fill: #10B981;
+        }
+        
+        .node.failed rect {
+            fill: #EF4444;
+        }
+        
+        .node text {
+            fill: white;
+            font-weight: bold;
+        }
+        
+        .edgePath path {
+            stroke: #333;
+            stroke-width: 1.5px;
+            fill: none;
+        }
+        
+        .edgePath.success path {
+            stroke: #10B981;
+        }
+        
+        .edgePath.failed path {
+            stroke: #EF4444;
+        }
+        
+        #graph-container {
+            width: 100%;
+            height: 500px;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto p-4">
+        <h1 class="text-3xl font-bold text-center my-6 text-blue-600">任务执行结果可视化</h1>
+        
+        <!-- 任务汇总信息 -->
+        <div class="bg-white rounded-lg shadow mb-6 p-4">
+            <h2 class="text-xl font-semibold mb-4">任务执行汇总</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-green-100 p-4 rounded-lg">
+                    <div class="text-green-600 font-bold text-xl" id="successCount">0</div>
+                    <div class="text-green-600">成功任务</div>
+                </div>
+                <div class="bg-red-100 p-4 rounded-lg">
+                    <div class="text-red-600 font-bold text-xl" id="failedCount">0</div>
+                    <div class="text-red-600">失败任务</div>
+                </div>
+                <div class="bg-blue-100 p-4 rounded-lg">
+                    <div class="text-blue-600 font-bold text-xl" id="totalCount">0</div>
+                    <div class="text-blue-600">总任务数</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 任务列表 -->
+        <div class="bg-white rounded-lg shadow mb-6 p-4">
+            <h2 class="text-xl font-semibold mb-4">任务执行详情</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white">
+                    <thead>
+                        <tr>
+                            <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                            <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">描述</th>
+                            <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+                            <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">时间戳</th>
+                            <th class="py-2 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="taskTableBody">
+                        <!-- 任务数据将通过JavaScript动态添加 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- 任务依赖关系图 - 使用Dagre-D3 -->
+        <div class="bg-white rounded-lg shadow mb-6 p-4">
+            <h2 class="text-xl font-semibold mb-4">任务依赖关系图</h2>
+            <div id="graph-container">
+                <svg id="dependency-graph" width="100%" height="100%">
+                    <g/>
+                </svg>
+            </div>
+        </div>
+        
+        <!-- 任务详情模态框 -->
+        <div id="taskModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+            <div class="bg-white p-6 rounded-lg w-11/12 max-w-2xl max-h-[80vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold" id="modalTaskId"></h3>
+                    <button id="closeModalBtn" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div id="modalContent" class="space-y-4">
+                    <!-- 任务详情将通过JavaScript动态添加 -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 直接嵌入任务数据，避免使用fetch API
+        const taskData = [
+            {
+                "id": "1",
+                "description": "安装所需依赖库，如 requests 和 beautifulsoup4",
+                "status": "success",
+                "output": "任务 1 执行成功",
+                "timestamp": "2025-04-22T20:19:02.686640",
+                "dependencyResults": {}
+            },
+            {
+                "id": "2",
+                "description": "模拟浏览器请求，获取用户主页HTML",
+                "status": "success",
+                "output": "任务 2 执行成功",
+                "timestamp": "2025-04-22T20:19:02.686711",
+                "dependencyResults": {
+                    "1": {
+                        "status": "success",
+                        "output": "任务 1 执行成功"
+                    }
+                }
+            },
+            {
+                "id": "3",
+                "description": "从HTML中提取笔记标题、发布时间和点赞数",
+                "status": "success",
+                "output": "任务 3 执行成功",
+                "timestamp": "2025-04-22T20:19:02.686952",
+                "dependencyResults": {
+                    "2": {
+                        "status": "success",
+                        "output": "任务 2 执行成功"
+                    }
+                }
+            },
+            {
+                "id": "4",
+                "description": "清洗数据，去掉无效数据行",
+                "status": "success",
+                "output": "任务 4 执行成功",
+                "timestamp": "2025-04-22T20:19:02.687003",
+                "dependencyResults": {
+                    "3": {
+                        "status": "success",
+                        "output": "任务 3 执行成功"
+                    },
+                    "2": {
+                        "status": "success",
+                        "output": "任务 2 执行成功"
+                    }
+                }
+            },
+            {
+                "id": "5",
+                "description": "存储清洗后的数据到数据库",
+                "status": "success",
+                "output": "任务 5 执行成功",
+                "timestamp": "2025-04-22T20:19:02.687079",
+                "dependencyResults": {
+                    "4": {
+                        "status": "success",
+                        "output": "任务 4 执行成功"
+                    }
+                }
+            },
+            {
+                "id": "6",
+                "description": "生成任务执行报告，包含成功与失败的详细信息",
+                "status": "success",
+                "output": "任务 6 执行成功",
+                "timestamp": "2025-04-22T20:19:02.687218",
+                "dependencyResults": {
+                    "5": {
+                        "status": "success",
+                        "output": "任务 5 执行成功"
+                    },
+                    "4": {
+                        "status": "success",
+                        "output": "任务 4 执行成功"
+                    }
+                }
+            }
+        ];
+
+        // 更新任务统计
+        document.getElementById('successCount').textContent = taskData.filter(task => task.status === 'success').length;
+        document.getElementById('failedCount').textContent = taskData.filter(task => task.status === 'failed').length;
+        document.getElementById('totalCount').textContent = taskData.length;
+        
+        // 填充任务表格
+        const tableBody = document.getElementById('taskTableBody');
+        taskData.forEach(task => {
+            const row = document.createElement('tr');
+            const statusClass = task.status === 'success' ? 'text-green-600' : 'text-red-600';
+            const statusIcon = task.status === 'success' ? 'fa-check-circle' : 'fa-times-circle';
+            
+            row.innerHTML = `
+                <td class="py-2 px-4 border-b border-gray-200">${task.id}</td>
+                <td class="py-2 px-4 border-b border-gray-200">${task.description}</td>
+                <td class="py-2 px-4 border-b border-gray-200">
+                    <span class="${statusClass}">
+                        <i class="fas ${statusIcon} mr-1"></i>
+                        ${task.status === 'success' ? '成功' : '失败'}
+                    </span>
+                </td>
+                <td class="py-2 px-4 border-b border-gray-200">${new Date(task.timestamp).toLocaleString()}</td>
+                <td class="py-2 px-4 border-b border-gray-200">
+                    <button class="view-details bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded text-xs" data-task-id="${task.id}">
+                        查看详情
+                    </button>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+        
+        // 使用Dagre-D3创建任务依赖关系图
+        document.addEventListener('DOMContentLoaded', () => {
+            // 创建一个新的有向图
+            const g = new dagreD3.graphlib.Graph()
+                .setGraph({})
+                .setDefaultEdgeLabel(function() { return {}; });
+            
+            // 添加节点
+            taskData.forEach(task => {
+                const nodeClass = task.status === 'success' ? 'success' : 'failed';
+                g.setNode(task.id, {
+                    label: `任务 ${task.id}`,
+                    class: nodeClass,
+                    rx: 5,
+                    ry: 5,
+                    width: 150,
+                    height: 60,
+                    description: task.description,
+                    taskId: task.id
+                });
+            });
+            
+            // 添加边/依赖关系
+            taskData.forEach(task => {
+                const dependencies = Object.keys(task.dependencyResults);
+                dependencies.forEach(depId => {
+                    const depStatus = task.dependencyResults[depId].status;
+                    g.setEdge(depId, task.id, {
+                        label: depStatus,
+                        class: depStatus === 'success' ? 'success' : 'failed',
+                        curve: d3.curveBasis,
+                        arrowheadStyle: "fill: " + (depStatus === 'success' ? '#10B981' : '#EF4444')
+                    });
+                });
+            });
+            
+            // 创建渲染器
+            const render = new dagreD3.render();
+            
+            // 选择SVG元素并设置缩放
+            const svg = d3.select("#dependency-graph");
+            const svgGroup = svg.select("g");
+            
+            // 运行渲染器
+            render(svgGroup, g);
+            
+            // 居中视图
+            const xCenterOffset = (svg.attr("width") - g.graph().width) / 2;
+            svgGroup.attr("transform", `translate(${xCenterOffset}, 20)`);
+            
+            // 添加缩放功能
+            const zoom = d3.zoom().on("zoom", (event) => {
+                svgGroup.attr("transform", event.transform);
+            });
+            svg.call(zoom);
+            
+            // 添加节点点击事件 - 显示任务详情
+            svgGroup.selectAll("g.node")
+                .on("click", function(event) {
+                    const taskId = d3.select(this).attr("id");
+                    document.querySelector(`.view-details[data-task-id="${taskId}"]`).click();
+                })
+                .style("cursor", "pointer")
+                .append("title")
+                .text(function(id) {
+                    const task = taskData.find(t => t.id === id);
+                    return `${task.description}\n状态: ${task.status}`;
+                });
+            
+            // 添加调试信息
+            console.log("依赖图渲染完成", g);
+        });
+    </script>
+    
+    <script>
+        // 模态框功能
+        const modal = document.getElementById('taskModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        
+        // 为所有"查看详情"按钮添加点击事件
+        document.querySelectorAll('.view-details').forEach(button => {
+            button.addEventListener('click', () => {
+                const taskId = button.getAttribute('data-task-id');
+                const task = taskData.find(t => t.id === taskId);
+                
+                document.getElementById('modalTaskId').textContent = `任务 ${task.id} 详情`;
+                
+                const content = document.getElementById('modalContent');
+                content.innerHTML = `
+                    <div class="space-y-2">
+                        <p><span class="font-semibold">描述:</span> ${task.description}</p>
+                        <p><span class="font-semibold">状态:</span> 
+                            <span class="${task.status === 'success' ? 'text-green-600' : 'text-red-600'}">
+                                ${task.status === 'success' ? '成功' : '失败'}
+                            </span>
+                        </p>
+                        <p><span class="font-semibold">输出:</span> ${task.output}</p>
+                        <p><span class="font-semibold">时间戳:</span> ${new Date(task.timestamp).toLocaleString()}</p>
+                    </div>
+                `;
+                
+                // 添加依赖任务信息
+                if (Object.keys(task.dependencyResults).length > 0) {
+                    const depSection = document.createElement('div');
+                    depSection.className = 'mt-4';
+                    depSection.innerHTML = '<h4 class="font-semibold text-md mb-2">依赖任务:</h4>';
+                    
+                    const depList = document.createElement('ul');
+                    depList.className = 'list-disc pl-5 space-y-1';
+                    
+                    Object.entries(task.dependencyResults).forEach(([depId, depResult]) => {
+                        const statusClass = depResult.status === 'success' ? 'text-green-600' : 'text-red-600';
+                        depList.innerHTML += `
+                            <li>
+                                任务 ${depId}: 
+                                <span class="${statusClass}">${depResult.status}</span> - 
+                                ${depResult.output}
+                            </li>
+                        `;
+                    });
+                    
+                    depSection.appendChild(depList);
+                    content.appendChild(depSection);
+                }
+                
+                modal.classList.remove('hidden');
+            });
+        });
+        
+        // 关闭模态框
+        closeModalBtn.addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+        
+        // 点击模态框外部关闭
+        window.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                modal.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
