@@ -7,6 +7,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 # Load environment variables from .env file
 load_dotenv()
 
+
 def get_llm_model():
     """
     Factory function to create an LLM model based on environment variables.

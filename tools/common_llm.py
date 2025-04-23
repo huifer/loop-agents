@@ -22,10 +22,10 @@ class ConversationManager:
     """
 
     def __init__(
-        self,
-        system_prompt: str = "你是一个有用的AI助手。",
-        history_window_size: int = 10,
-        conversation_id: Optional[str] = None,
+            self,
+            system_prompt: str = "你是一个有用的AI助手。",
+            history_window_size: int = 10,
+            conversation_id: Optional[str] = None,
     ):
         """
         初始化对话管理器
@@ -141,5 +141,3 @@ class ConversationManager:
         """清空对话历史，只保留系统提示"""
         self.message_history = ChatMessageHistory()
         self.message_history.add_message(SystemMessage(content=self.system_prompt))
-
-
