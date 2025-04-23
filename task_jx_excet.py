@@ -22,10 +22,11 @@ class TaskJxExecutor:
     """
 
     def __init__(
-        self,
-        tasks: List[TaskDefinition],
-        roles,
-        max_workers: int = 5,
+            self,
+            tasks: List[TaskDefinition],
+            roles,
+            prompt_map,
+            max_workers: int = 5,
     ):
         """
         Initialize the task executor.
@@ -41,6 +42,7 @@ class TaskJxExecutor:
         self.failed_tasks: Set[str] = set()
         self.in_progress: Set[str] = set()
         self.roles: List[RoleDefinition] = roles
+        self.prompt_map = prompt_map
 
     def _find_role_by_name(self, role_name: str) -> Optional[RoleDefinition]:
         """
@@ -139,10 +141,10 @@ class TaskJxExecutor:
             }
 
     def process_task(
-        self,
-        task: TaskDefinition,
-        role: RoleDefinition,
-        dependency_results: Dict[str, Any],
+            self,
+            task: TaskDefinition,
+            role: RoleDefinition,
+            dependency_results: Dict[str, Any],
     ) -> Dict[str, Any]:
         """
         Process a task with its dependencies.
@@ -158,6 +160,17 @@ class TaskJxExecutor:
         # For now, just simulate task execution
         # This is where you would implement the actual task processing logic
         time.sleep(1)
+
+        # step1:
+        # 需要确认任务的产物的提示词
+        # self.prompt_map['task_result']
+
+        # step2:
+        # 任务执行的系统提示词
+        # role.prompt_text
+        # user message =
+        # task :
+        # 最终产物:
 
         # Create result with dependency information
         return {
@@ -177,7 +190,7 @@ class TaskJxExecutor:
             List of task results
         """
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=self.max_workers
+                max_workers=self.max_workers
         ) as executor:
             futures = {}
 
@@ -185,12 +198,11 @@ class TaskJxExecutor:
                 # Find tasks that can be executed (dependencies met and not in progress)
                 for task_id, task in self.tasks.items():
                     if (
-                        task_id not in self.completed_tasks
-                        and task_id not in self.failed_tasks
-                        and task_id not in self.in_progress
-                        and self._are_dependencies_met(task_id)
+                            task_id not in self.completed_tasks
+                            and task_id not in self.failed_tasks
+                            and task_id not in self.in_progress
+                            and self._are_dependencies_met(task_id)
                     ):
-
                         # Submit task for execution
                         futures[executor.submit(self._execute_task, task_id)] = task_id
 
@@ -221,9 +233,9 @@ class TaskJxExecutor:
                     # Check if we're in a deadlock (all remaining tasks have dependencies that can't be met)
                     if not self.in_progress:
                         remaining = (
-                            set(self.tasks.keys())
-                            - self.completed_tasks
-                            - self.failed_tasks
+                                set(self.tasks.keys())
+                                - self.completed_tasks
+                                - self.failed_tasks
                         )
                         if remaining:
                             logger.warning(
@@ -247,16 +259,17 @@ class TaskJxExecutor:
             "failed": len(self.failed_tasks),
             "in_progress": len(self.in_progress),
             "pending": len(self.tasks)
-            - len(self.completed_tasks)
-            - len(self.failed_tasks)
-            - len(self.in_progress),
+                       - len(self.completed_tasks)
+                       - len(self.failed_tasks)
+                       - len(self.in_progress),
         }
 
 
 def execute_tasks_jx(
-    tasks: List[TaskDefinition],
-    roles,
-    max_workers: int = 5,
+        tasks: List[TaskDefinition],
+        roles,
+        prompt_map,
+        max_workers: int = 5,
 ) -> List[Dict[str, Any]]:
     """
     Convenience function to execute a list of tasks.
@@ -268,7 +281,7 @@ def execute_tasks_jx(
     Returns:
         List of task results
     """
-    executor = TaskJxExecutor(tasks, roles, max_workers)
+    executor = TaskJxExecutor(tasks, roles, max_workers, prompt_map)
     return executor.execute_all()
 
 

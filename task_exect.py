@@ -18,8 +18,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-
-
 class TaskExecutor:
     """
     Executes tasks in parallel while respecting their dependencies.
@@ -42,10 +40,10 @@ class TaskExecutor:
         self.prompt_map = prompt_map
 
     def _process_task(
-        self,
-        task_description: str,
-        prompt_map=None,
-        dependent_results: Dict[str, str] = None,
+            self,
+            task_description: str,
+            prompt_map=None,
+            dependent_results: Dict[str, str] = None,
     ) -> str:
         """
         Process a task by generating roles and executing the task.
@@ -69,7 +67,7 @@ class TaskExecutor:
 
         # Simulating task execution time
         time.sleep(1)
-        return execute_tasks_jx(            task_items, roles=roles        )
+        return execute_tasks_jx(task_items, roles=roles, prompt_map=prompt_map)
 
     def _are_dependencies_met(self, task_id: str) -> bool:
         """
@@ -156,7 +154,7 @@ class TaskExecutor:
             List of task results
         """
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=self.max_workers
+                max_workers=self.max_workers
         ) as executor:
             futures = {}
 
@@ -164,12 +162,11 @@ class TaskExecutor:
                 # Find tasks that can be executed (dependencies met and not in progress)
                 for task_id, task in self.tasks.items():
                     if (
-                        task_id not in self.completed_tasks
-                        and task_id not in self.failed_tasks
-                        and task_id not in self.in_progress
-                        and self._are_dependencies_met(task_id)
+                            task_id not in self.completed_tasks
+                            and task_id not in self.failed_tasks
+                            and task_id not in self.in_progress
+                            and self._are_dependencies_met(task_id)
                     ):
-
                         # Submit task for execution
                         futures[executor.submit(self._execute_task, task_id)] = task_id
 
@@ -200,9 +197,9 @@ class TaskExecutor:
                     # Check if we're in a deadlock (all remaining tasks have dependencies that can't be met)
                     if not self.in_progress:
                         remaining = (
-                            set(self.tasks.keys())
-                            - self.completed_tasks
-                            - self.failed_tasks
+                                set(self.tasks.keys())
+                                - self.completed_tasks
+                                - self.failed_tasks
                         )
                         if remaining:
                             logger.warning(
@@ -226,14 +223,14 @@ class TaskExecutor:
             "failed": len(self.failed_tasks),
             "in_progress": len(self.in_progress),
             "pending": len(self.tasks)
-            - len(self.completed_tasks)
-            - len(self.failed_tasks)
-            - len(self.in_progress),
+                       - len(self.completed_tasks)
+                       - len(self.failed_tasks)
+                       - len(self.in_progress),
         }
 
 
 def execute_tasks(
-    tasks: List[TaskItem], prompt_map, max_workers: int = 5
+        tasks: List[TaskItem], prompt_map, max_workers: int = 5
 ) -> List[Dict[str, Any]]:
     """
     Convenience function to execute a list of tasks.
