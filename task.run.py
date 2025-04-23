@@ -1,11 +1,14 @@
 import os
 import json
 import logging
+import time
+from datetime import datetime
 from typing import List, Dict, Any, Optional
 from langchain.prompts import PromptTemplate
 from pydantic import BaseModel, Field
 
 from GenRoleSys import RoleGenerator
+from task_exect import execute_tasks
 from task_jx import TaskJxGenerator
 from tools.llm_generatory import get_llm_model
 from tools.task_splitter import TaskSplitter, TaskItem
@@ -74,7 +77,7 @@ def load_prompt():
     return prompt_map
 
 
-def run(task: str) -> List[Dict[str, Any]]:
+def run(task: str) -> tuple[List[Dict[str, Any]], float]:
     """
     运行函数，执行任务。
 
@@ -82,37 +85,43 @@ def run(task: str) -> List[Dict[str, Any]]:
         task: 要执行的任务
 
     Returns:
-        List of task items
+        Tuple containing:
+        - List of task items
+        - Execution time in minutes
     """
+    start_time = time.time()
+
     # 获取 prompt_map
     prompt_map = load_prompt()
     # 使用 TaskSplitter 类处理任务，传入 prompt_map
     task_splitter = TaskSplitter(prompt_map)
     tasks = task_splitter.split_task(task)
 
-    result_tasks = []
-    # 循环 tasks
-    for task_item in tasks:
-        try:
-            # 确保我们有一个有效的描述
-            description = task_item.description
-            if description:
-                # 任务描述
-                role_gen = RoleGenerator(prompt_map)
-                # 传递规范化的描述
-                roles = role_gen.generate_roles(description)
+    logger.info(f"Task split into {len(tasks)} items.")
+    logger.info(f"Tasks: {tasks}")
+    result = execute_tasks(tasks=tasks, prompt_map=prompt_map)
 
-                role_names = [role.role_name for role in roles if role.role_name]
-                taskJxGenerator = TaskJxGenerator(prompt_map)
-                task_items = taskJxGenerator.generator_task(description, role_names)
-            else:
-                logger.warning(f"Task item missing description: {task_item}")
-        except Exception as e:
-            logger.error(f"Error processing task item: {e}", exc_info=True)
+    end_time = time.time()
+    execution_time_minutes = (end_time - start_time) / 60
 
-    return result_tasks if result_tasks else tasks
+    return result, execution_time_minutes
 
 
 if __name__ == "__main__":
-    task_list = run("做一个数据分析报告")
-    logger.info(task_list)
+    task_list, execution_time = run("做一个数据分析报告")
+
+    # Create output directory if it doesn't exist
+    output_dir = "output"
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    # Create timestamped filename
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_file = os.path.join(output_dir, f"task_result_{timestamp}.json")
+
+    # Write results to JSON file
+    with open(output_file, "w", encoding="utf-8") as f:
+        json.dump(task_list, f, ensure_ascii=False, indent=2)
+
+    logger.info(f"Results saved to: {output_file}")
+    logger.info(f"Task execution completed in {execution_time:.2f} minutes")

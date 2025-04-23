@@ -1,0 +1,39 @@
+[
+  {
+    'dependsOn': [],
+    'description': '明确报告的目标和关键问题。',
+    'result': [
+      {
+        'dependsOn': [],
+        'description': 'Define the specific objectives the report aims to achieve.',
+        'result': 'Completed task Define the specific objectives the report aims to achieve. with role Report Goal & Scope Analyst',
+        'role_name': 'Report Goal & Scope Analyst',
+        'status': 'completed',
+        'task_id': '1'
+      },
+      {
+        'dependsOn': [
+          '1'
+        ],
+        'description': 'Identify and formulate the key questions the report needs to answer.',
+        'result': 'Completed task Identify and formulate the key questions the report needs to answer. with role Report Goal & Scope Analyst',
+        'role_name': 'Report Goal & Scope Analyst',
+        'status': 'completed',
+        'task_id': '2'
+      },
+      {
+        'dependsOn': [
+          '1',
+          '2'
+        ],
+        'description': 'Clarify the scope of the report based on the defined goals and questions.',
+        'result': 'Completed task Clarify the scope of the report based on the defined goals and questions. with role Report Goal & Scope Analyst',
+        'role_name': 'Report Goal & Scope Analyst',
+        'status': 'completed',
+        'task_id': '3'
+      }
+    ],
+    'status': 'completed',
+    'task_id': '1'
+  }
+]

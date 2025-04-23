@@ -28,6 +28,7 @@ class TaskDefinition(BaseModel):
         description="该子任务依赖的其他任务ID列表，表示执行顺序和依赖关系",
         default_factory=list,
     )
+    result:Optional[str] = Field( default="",  description="")
 
 
 class TaskJxGenerator:

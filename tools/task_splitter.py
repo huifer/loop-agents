@@ -11,6 +11,7 @@ from langchain.prompts import (
 from langchain_core.output_parsers import JsonOutputParser
 
 
+
 class TaskItem(BaseModel):
     """Task item schema for parsing LLM output"""
 
@@ -19,8 +20,8 @@ class TaskItem(BaseModel):
     dependsOn: List[str] = Field(
         default_factory=list, description="Dependencies (task IDs)"
     )
-    role_name: Optional[str] = Field(
-        default=None, description="Responsible role for this task (if any)"
+    result: Optional[str] = Field(
+        default="", description="Result of the task execution"
     )
 
 
