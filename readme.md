@@ -1,63 +1,135 @@
-# Loop Agent - AI-Driven Task Decomposition and Execution Framework
+# Loop Agent - Task Execution Framework Based on Divergent Thinking
 
-## Overview
+[English](#loop-agent---task-execution-framework-based-on-divergent-thinking) | [中文](./readme_zh.md)
 
-Loop Agent is an AI-powered framework that decomposes complex tasks into smaller, actionable steps and executes them in
-a coordinated, parallel manner. It leverages large language models (LLMs) for task decomposition and execution using a
-role-based approach with ReAct (Reasoning, Action, Observation) patterns.
+*Loop Agent - Let thinking flow like water, not limited like a chain.*
 
-## Key Features
+![loop-agent](loopagent.png)
 
-1. **Task Decomposition**: Automatically breaks down complex tasks into smaller, sequential steps with clear
-   dependencies.
-2. **Role-Based Execution**: Assigns specialized AI roles to each task (e.g., Designer, Developer, Tester).
-3. **Parallel Task Execution**: Executes tasks concurrently while respecting dependencies.
-4. **Visualization**: Provides a web interface to monitor task execution and dependencies.
-5. **ReAct Pattern Implementation**: Each AI role follows the Reasoning, Action, Observation pattern for structured
-   problem-solving.
+## Core Concepts
 
-## System Architecture
+Loop Agent rejects the traditional Chain of Thought (COT) reasoning pattern and adopts divergent thinking combined with the MapReduce paradigm to achieve a more efficient task processing workflow.
 
-The system consists of several key components:
+### Rejecting COT, Embracing Divergent Thinking
 
-### 1. Task Decomposition
+Traditional LLM applications often use the Chain of Thought method, which is a linear, sequential reasoning process. However, human thinking is often non-linear and divergent. Loop Agent simulates a more natural human thinking pattern through task decomposition and parallel processing.
 
-- **Basic Task Split**: Decomposes a user request into sequential steps with dependencies
-- **Role-Based Decomposition**: Enhanced decomposition that also assigns appropriate roles to each task
-- Prompt files: `prompt/task_split.md`, `prompt/task_jx.md`
+### MapReduce Paradigm
 
-### 2. Role Generation
+Our implementation is based on the MapReduce concept:
+- **Map Phase**: Breaking down complex tasks into multiple independent subtasks
+- **Execution Phase**: Processing subtasks in parallel
+- **Reduce Phase**: Integrating the results of various subtasks to form the final output
 
-- Automatically identifies required roles and generates specialized system prompts for each
-- Ensures each role follows the ReAct pattern
-- Prompt file: `prompt/gen_role_sys.md`
+## Implementation
 
-### 3. LLM Integration
+### Task Flow
 
-- Supports multiple LLM providers (Google Gemini, OpenAI)
-- Handles conversation management and context
-- Files: `tools/llm_generatory.py`, `tools/common_llm.py`
+1. Input a complex task
+2. Use `TaskSplitter` to break down the task into multiple subtasks
+3. Use the `execute_tasks` function to process each subtask
+4. Integrate results and output
 
-### 4. Task Execution Engine
+## System Flowchart
 
-- Parallel execution with dependency tracking
-- Thread-safe execution of the task dependency graph
-- File: `sample.task.py`
+### Overall Workflow
 
-### 5. Results Visualization
+```mermaid
+flowchart TB
+    A[Input Complex Task] --> B[TaskSplitter Decomposition]
+    B --> C{Dependencies Exist?}
+    C -->|Yes| D[Execute by Dependency Order]
+    C -->|No| E[Execute in Parallel]
+    D --> F[Role Assignment & Task Parsing]
+    E --> F
+    F --> G[Execute Subtasks]
+    G --> H[Results Integration]
+    H --> I[Generate Final Output]
+```
 
-- Interactive web interface showing task dependencies and execution status
-- Detailed task information and dependency graph
-- File: `index.html`
+### Detailed Execution Process
+
+```mermaid
+flowchart TD
+    Start[Start Task] --> Split[TaskSplitter: Decompose Task]
+    Split --> Roles[RoleGenerator: Generate Roles]
+    Roles --> TaskJx[TaskJxGenerator: Parse Task]
+    TaskJx --> Execute[Execute Task Queue]
+    Execute --> ParallelExec[Parallel Task Executor]
+    
+    subgraph "Task Execution Flow"
+    ParallelExec --> DependencyCheck{Check Dependencies}
+    DependencyCheck -->|Dependencies Completed| ProcessTask[Process Task]
+    DependencyCheck -->|Dependencies Pending| Wait[Wait for Dependencies]
+    Wait --> DependencyCheck
+    ProcessTask --> FindRole[Match Role]
+    FindRole --> PrepareContext[Prepare Context]
+    PrepareContext --> CallLLM[Call LLM]
+    CallLLM --> SaveResult[Save Result]
+    end
+    
+    SaveResult --> AllComplete{All Completed?}
+    AllComplete -->|No| ParallelExec
+    AllComplete -->|Yes| Reduce[TaskReducer: Integrate Results]
+    Reduce --> Output[Output Final Result]
+```
+
+### Task Dependency Handling
+
+```mermaid
+flowchart LR
+    A[Task A] --> C[Task C]
+    B[Task B] --> C
+    C --> D[Task D]
+    
+    subgraph "Dependency Handling"
+    CheckA[Check Task A Completed] -.-> ExecuteC[Execute Task C]
+    CheckB[Check Task B Completed] -.-> ExecuteC
+    ExecuteC -.-> ExecuteD[Execute Task D]
+    end
+```
+
+### Key Components
+
+- **TaskSplitter**: Responsible for task decomposition, implementing divergent thinking
+- **RoleGenerator**: Generates roles for task execution
+- **TaskJxGenerator**: Task parsing generator
+- **Execution Engine**: Processes subtasks in parallel
+- **TaskReducer**: Integrates the results of various subtasks
+
+## Advantages
+
+- **Enhanced Complex Task Processing**: Reduces complexity through decomposition
+- **Parallel Thinking Mode**: More aligned with actual human thinking patterns
+- **More Comprehensive Results**: Divergent thinking explores more possibilities
+- **Higher Execution Efficiency**: Subtasks can be processed in parallel
 
 ## Usage
 
-The framework can be used by:
+```python
+from task.run import run
 
-1. Decomposing a task using the task decomposition prompts
-2. Generating appropriate roles for the task
-3. Creating a structured task list with dependencies and role assignments
-4. Executing the tasks using the parallel execution framework
-5. Reviewing results through the visualization interface
+# Execute a task
+results, execution_time = run("Create a Linux basic command tutorial")
+
+# Results will be saved in the output directory
+```
+
+## Project Structure
+
+- `task.run.py`: Core execution engine
+- `task_exect.py`: Task execution module
+- `task_jx.py`: Task parsing module
+- `task_jx_excet.py`: Task role execution module
+- `tools/`: Collection of utility functions
+  - `task_splitter.py`: Task decomposition tool
+  - `llm_generatory.py`: LLM calling interface
+- `prompt/`: Prompt template directory
+
+## Extensions and Optimizations
+
+- Support for more complex task dependency relationships
+- Optimization of subtask parallelism
+- Enhanced result integration algorithms
 
 
