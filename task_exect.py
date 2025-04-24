@@ -9,11 +9,12 @@ from pydantic import BaseModel, Field
 from GenRoleSys import RoleGenerator
 from task_jx import TaskJxGenerator
 from task_jx_excet import execute_tasks_jx
+from task_reduce import TaskReducer
 from tools.task_splitter import TaskItem
 
-# Configure logging
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - [%(pathname)s:%(lineno)d] - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,7 @@ class TaskExecutor:
             task_description: str,
             prompt_map=None,
             dependent_results: Dict[str, str] = None,
-    ) -> str:
+    ) -> List[Dict[str, Any]]:
         """
         Process a task by generating roles and executing the task.
 
@@ -65,9 +66,9 @@ class TaskExecutor:
         taskJxGenerator = TaskJxGenerator(prompt_map)
         task_items = taskJxGenerator.generator_task(task_description, role_names)
 
-        # Simulating task execution time
-        time.sleep(1)
-        return execute_tasks_jx(task_items, roles=roles, prompt_map=prompt_map)
+        return execute_tasks_jx(
+            tasks=task_items, roles=roles, max_workers=3, prompt_map=prompt_map
+        )
 
     def _are_dependencies_met(self, task_id: str) -> bool:
         """
@@ -112,12 +113,33 @@ class TaskExecutor:
             # Collect results from dependencies
             dependent_results = {}
             for dep_id in task.dependsOn:
-                if dep_id in self.completed_tasks and dep_id in self.tasks:
-                    dependent_results[dep_id] = self.tasks[dep_id].result
+                if dep_id in self.results:
+                    dependent_results[dep_id] = {
+                        "description": self.results[dep_id]["description"],
+                        "result": self.results[dep_id]["result"],
+                    }
 
             # Call the class method with dependent results
             task_result = self._process_task(
                 task.description, self.prompt_map, dependent_results
+            )
+
+            # todo:
+            # 当前任务描述
+            # 当前任务依赖任务的任务执行结果
+            # 当前任务的子任务执行结果
+
+            leaf_task = find_leaf_tasks(task_result)
+            leaf_task_format = ""
+            for e in leaf_task:
+                task_desc = e.get("description", "")
+                task_result_item = e.get("result", "")
+                leaf_task_format += f"### task: {task_desc} \nresult:\n{task_result_item} \n\n"
+            fc = self.handler_dep_result(dependent_results)
+            task_reduce = TaskReducer(
+                task_description=task.description,
+                dependency_results=fc,
+                subtask_results=leaf_task_format,
             )
 
             # Example result - replace with actual execution result
@@ -126,7 +148,8 @@ class TaskExecutor:
                 "status": "completed",
                 "description": task.description,
                 "dependsOn": task.dependsOn,  # Include dependency information
-                "result": task_result,
+                "children": task_result,
+                "result": task_reduce.process_task(),
             }
 
             self.in_progress.remove(task_id)
@@ -145,6 +168,31 @@ class TaskExecutor:
                 "description": task.description,
                 "dependsOn": task.dependsOn,
             }
+    def handler_dep_result(self, dependency_results: Dict[str, Any]):
+        """
+        Format dependency results into a markdown string.
+
+        Args:
+            dependency_results: Dictionary of dependency results where keys are task IDs
+                               and values contain description and result
+
+        Returns:
+            Formatted markdown string of dependency results
+        """
+        if not dependency_results:
+            return ""
+
+        md_output = "## Previous Task Results\n\n"
+
+        for task_id, task_data in dependency_results.items():
+            description = task_data.get("description", "No description")
+            result = task_data.get("result", "No result")
+
+            md_output += f"### Task {task_id}: {description}\n\n"
+            md_output += f"{result}\n\n"
+            md_output += "---\n\n"
+
+        return md_output
 
     def execute_all(self) -> List[Dict[str, Any]]:
         """
@@ -184,7 +232,7 @@ class TaskExecutor:
                             self.results[task_id] = result
                             # Update the result field of the TaskItem object
                             if result["status"] == "completed" and "result" in result:
-                                self.tasks[task_id].result = result['result']
+                                self.tasks[task_id].result = result["result"]
                         except Exception as e:
                             logger.error(
                                 f"Task {task_id} failed with exception: {str(e)}"
@@ -244,6 +292,32 @@ def execute_tasks(
     """
     executor = TaskExecutor(tasks, max_workers, prompt_map)
     return executor.execute_all()
+
+
+def find_leaf_tasks(task_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Find tasks that don't have any downstream dependencies (leaf nodes in the task graph).
+
+    Args:
+        task_results: List of task results from execute_tasks_jx
+
+    Returns:
+        List of task results that are leaf nodes (tasks that no other task depends on)
+    """
+    # Collect all task IDs that are depended upon by other tasks
+    depended_upon = set()
+    for task in task_results:
+        if "dependsOn" in task and task["dependsOn"]:
+            for dep_id in task["dependsOn"]:
+                depended_upon.add(dep_id)
+
+    # Find tasks that no other task depends on
+    leaf_tasks = []
+    for task in task_results:
+        if task["task_id"] not in depended_upon:
+            leaf_tasks.append(task)
+
+    return leaf_tasks
 
 
 if __name__ == "__main__":

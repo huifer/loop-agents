@@ -108,7 +108,7 @@ def run(task: str) -> tuple[List[Dict[str, Any]], float]:
 
 
 if __name__ == "__main__":
-    task_list, execution_time = run("做一个数据分析报告")
+    task_list, execution_time = run("做一个 Linux 基础命令教学")
 
     # Create output directory if it doesn't exist
     output_dir = "output"

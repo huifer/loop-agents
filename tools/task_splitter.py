@@ -11,7 +11,6 @@ from langchain.prompts import (
 from langchain_core.output_parsers import JsonOutputParser
 
 
-
 class TaskItem(BaseModel):
     """Task item schema for parsing LLM output"""
 
@@ -25,12 +24,21 @@ class TaskItem(BaseModel):
     )
 
 
+class TokenUsage(BaseModel):
+    """Class to track token usage in LLM interactions"""
+
+    input_tokens: int = Field(default=0, description="Number of input tokens used")
+    output_tokens: int = Field(default=0, description="Number of output tokens used")
+    total_tokens: int = Field(default=0, description="Total tokens used")
+
+
 class TaskSplitter:
     """Splits a high-level task into detailed subtasks using LLM"""
 
     def __init__(self, prompt_map: Dict[str, str]):
         self.prompt_map = prompt_map
         self.output_parser = JsonOutputParser()
+        self.token_usage = TokenUsage()
 
     def split_task(self, task: str) -> List[TaskItem]:
         """
@@ -60,6 +68,10 @@ class TaskSplitter:
         while retry_count < max_retries:
             try:
                 response = llm(messages)
+                c = response.usage_metadata
+                self.token_usage.input_tokens += c["input_tokens"]
+                self.token_usage.output_tokens += c["output_tokens"]
+                self.token_usage.total_tokens += c["total_tokens"]
                 parsed = self.output_parser.invoke(response)
                 task_items = [TaskItem(**item) for item in parsed]
                 return task_items
